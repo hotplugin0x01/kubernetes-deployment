@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpfpm
+  labels:
+    app: phpfpm
+    layer: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: phpfpm
+  template:
+    metadata:
+      labels:
+        app: phpfpm   
+    spec:
+      containers:
+      - name: phpfpm
+        image: php:7.1-fpm-alpine
+        ports:
+        - containerPort: 9000
+        env:
+        - name: MYSQL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: nginx-configmap
+              key: mysql-host
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: nginx-configmap
+              key: database-name
+        - name: MYSQL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-user
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-password
+        volumeMounts:
+        - mountPath: /var/www/html/
+          name: phpfpm-pv-storage
+      volumes:
+      - name: phpfpm-pv-storage
+        persistentVolumeClaim:
+          claimName: phpfpm-pv-claim
+---
+kind: Service 
+apiVersion: v1 
+metadata:
+  name: phpfpm
+  labels:
+    app: phpfpm
+    layer: backend
+spec:
+  selector: 
+    app: phpfpm
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
